@@ -1,6 +1,7 @@
 package frames
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,6 +19,17 @@ type Request struct {
 	Payload        string
 }
 
+func (r *Request) Validate() error {
+	return errors.Join(
+		r.AppId.Validate(),
+		r.Serial.Validate(),
+		r.EncryptionMode.Validate(),
+		r.Function.Validate(),
+		r.Id.Validate(),
+		r.Password.Validate(),
+	)
+}
+
 // The "pad " string is 4 bytes reserved for "future" use.
 // They are not used in any messages, but validated to ensure message correctness.
 const fieldExtra = "pad "
@@ -27,13 +39,18 @@ func EncodeRequest(r Request) []byte {
 
 	payloadsize := fmt.Sprintf("%03d", len(r.Payload))
 
+	password := r.Password
+	if password == "" {
+		password = "          "
+	}
+
 	data = append(data, []byte(fmt.Sprintf("%12s", r.AppId))...)
 	data = append(data, []byte(fmt.Sprintf("%06d", r.Serial))...)
 	data = append(data, []byte(r.EncryptionMode)...)
 	data = append(data, ControlStart)
 	data = append(data, []byte(r.Function)...)
 	data = append(data, []byte(fmt.Sprintf("%02d", r.Id))...)
-	data = append(data, []byte(r.Password)...)
+	data = append(data, []byte(password)...)
 	data = append(data, []byte(strconv.FormatInt(r.Timestamp.Unix(), 10))...)
 	data = append(data, []byte(fieldExtra)...)
 	data = append(data, []byte(payloadsize)...)
@@ -78,13 +95,18 @@ func DecodeRequest(buffer []byte) (Request, error) {
 		return Request{}, fmt.Errorf("err reading burner serial: %w", err)
 	}
 
+	password := string(buffer[24:34])
+	if password == "          " {
+		password = ""
+	}
+
 	return Request{
 		AppId:          AppId(strings.Trim(string(buffer[0:12]), " ")),
 		Serial:         Serial(serial),
 		EncryptionMode: EncryptionMode(buffer[18]),
 		Function:       Function(buffer[20:22]),
 		Id:             MessageId(id),
-		Password:       Password(buffer[24:34]),
+		Password:       Password(password),
 		Timestamp:      ts,
 		Payload:        string(buffer[51 : 51+actualSize]),
 	}, nil

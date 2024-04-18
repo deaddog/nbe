@@ -14,9 +14,13 @@ func TestRequestEncoding(t *testing.T) {
 		EncryptionMode: frames.EncryptionModeNone,
 		Function:       frames.FunctionReadConsumptionData,
 		Id:             12,
-		Password:       "          ",
+		Password:       "",
 		Timestamp:      time.Now().Truncate(time.Second),
 		Payload:        "",
+	}
+
+	if err := original.Validate(); err != nil {
+		t.Fatalf("input request was not valid: %v", err)
 	}
 
 	encoded := frames.EncodeRequest(original)
@@ -24,6 +28,10 @@ func TestRequestEncoding(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("decoding failed: %v", err)
+	}
+
+	if err := decoded.Validate(); err != nil {
+		t.Fatalf("decoded request was not valid: %v", err)
 	}
 
 	if original.AppId != decoded.AppId {

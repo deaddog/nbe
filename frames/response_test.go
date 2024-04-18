@@ -19,11 +19,19 @@ func TestResponseEncoding(t *testing.T) {
 		},
 	}
 
+	if err := original.Validate(); err != nil {
+		t.Fatalf("input response was not valid: %v", err)
+	}
+
 	encoded := frames.EncodeResponse(original)
 	decoded, err := frames.DecodeResponse(encoded)
 
 	if err != nil {
 		t.Fatalf("decoding failed: %v", err)
+	}
+
+	if err := decoded.Validate(); err != nil {
+		t.Fatalf("decoded response was not valid: %v", err)
 	}
 
 	if original.AppId != decoded.AppId {

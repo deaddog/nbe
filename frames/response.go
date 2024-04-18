@@ -1,6 +1,7 @@
 package frames
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,6 +14,27 @@ type Response struct {
 	Id       MessageId
 	Code     ResponseCode
 	Payload  ResponsePayload
+}
+
+func (r *Response) Validate() error {
+	err := errors.Join(
+		r.AppId.Validate(),
+		r.Serial.Validate(),
+		r.Function.Validate(),
+		r.Id.Validate(),
+		r.Code.Validate(),
+	)
+
+	for k, v := range r.Payload {
+		if strings.ContainsAny(k, ";=") {
+			err = errors.Join(fmt.Errorf("payload key '%s' cannot contain ; and =", k))
+		}
+		if strings.ContainsAny(v, ";=") {
+			err = errors.Join(fmt.Errorf("payload value '%s' on key '%s' cannot contain ; and =", v, k))
+		}
+	}
+
+	return err
 }
 
 func EncodeResponse(r Response) []byte {
